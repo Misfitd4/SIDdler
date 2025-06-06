@@ -48,91 +48,118 @@ void render_char(SDL_Renderer* renderer, char c, int x, int y, SDL_Color fg) {
     if (!charset_texture) return;
 
     uint8_t petscii_index;
+  if (c >= 'A' && c <= 'Z') {
+    petscii_index = c - '@';  // A = 1
+  } else if (c >= 'a' && c <= 'z') {
+    petscii_index = (c - 'a' + 1) + 128;
+  } else if (c >= '0' && c <= '9') {
+    petscii_index = c;
 
-    if (c >= 'A' && c <= 'Z') {
-        petscii_index = c - '@';  // '@' is first (ASCII 64), so 'A' is index 1, etc.
-    } else if (c >= 'a' && c <= 'z') {
-        petscii_index = (c - 'a' + 1) + 128;
-    } else if (c == ' ') {
-        petscii_index = 32;
-    } else if (c >= '0' && c <= '9') {
-        petscii_index = c;
-    } else {
-        petscii_index = '?';
-    }
 
-    SDL_Rect src = {
-        (petscii_index % 16) * 8,
-        (petscii_index / 16) * 8,
-        8,
-        8
-    };
-    SDL_Rect dst = { x, y, 8, 8 };
+  } else if (c == ']') {
+    petscii_index = 29;
+  } else if (c == '>') {
+    petscii_index = 62;
+  } else if (c == '[') {
+    petscii_index = 27;
+  } else if (c == '$') {
+    petscii_index = 36;
+  } else if (c == '=') {
+    petscii_index = 61;
+  } else if (c == ' ') {
+    petscii_index = 32;
+  } else if (c == ';') {
+    petscii_index = 59;  // Manually fix for charset.bin offset
+  } else if (c == ':') {
+    petscii_index = 58;  // Manually fix for charset.bin offset
+  } else {
+    petscii_index = '?';  // fallback
+  }
+  SDL_Rect src = {
+    (petscii_index % 16) * 8,
+    (petscii_index / 16) * 8,
+    8,
+    8
+  };
+  SDL_Rect dst = { x, y, 8, 8 };
 
-    SDL_SetTextureColorMod(charset_texture, fg.r, fg.g, fg.b);
-    SDL_RenderCopy(renderer, charset_texture, &src, &dst);
+  SDL_SetTextureColorMod(charset_texture, fg.r, fg.g, fg.b);
+  SDL_RenderCopy(renderer, charset_texture, &src, &dst);
 }
 
 void render_string(SDL_Renderer* renderer, const char* str, int x, int y, SDL_Color fg) {
-    while (*str) {
-        render_char(renderer, *str++, x, y, fg);
-        x += 8;
-    }
+  while (*str) {
+    render_char(renderer, *str++, x, y, fg);
+    x += 8;
+  }
 }
 
 void render_text(SDL_Renderer* renderer, const char* text, int x, int y) {
-    SDL_Color white = {255, 255, 255, 255};
-    render_string(renderer, text, x, y, white);
+  SDL_Color white = {255, 255, 255, 255};
+  render_string(renderer, text, x, y, white);
 }
 
 void draw_text(SDL_Renderer* renderer, int x, int y, const char* text) {
-    SDL_Color white = {255, 255, 255, 255};
-    render_string(renderer, text, x, y, white);
+  SDL_Color white = {255, 255, 255, 255};
+  render_string(renderer, text, x, y, white);
 }
 
 // Logging system
-#define MAX_LOG_LINES 8
+#define MAX_LOG_LINES 32
 #define MAX_LOG_LENGTH 64
 static char log_lines[MAX_LOG_LINES][MAX_LOG_LENGTH];
 static int log_index = 0;
 
 void render_log(const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(log_lines[log_index], MAX_LOG_LENGTH, fmt, args);
-    va_end(args);
-    log_index = (log_index + 1) % MAX_LOG_LINES;
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(log_lines[log_index], MAX_LOG_LENGTH, fmt, args);
+  va_end(args);
+  log_index = (log_index + 1) % MAX_LOG_LINES;
 }
 
 void render_log_flush(SDL_Renderer *renderer) {
-    SDL_Color gray = {192, 192, 192, 255};
-    int y = 40;
-    for (int i = 0; i < MAX_LOG_LINES; ++i) {
-        int idx = (log_index + i) % MAX_LOG_LINES;
-        if (log_lines[idx][0]) {
-            render_string(renderer, log_lines[idx], 10, y, gray);
-            y += 10;
-        }
+  SDL_Color gray = {255, 255, 255, 255};
+  int y = 40;
+  for (int i = 0; i < MAX_LOG_LINES; ++i) {
+    int idx = (log_index + i) % MAX_LOG_LINES;
+    if (log_lines[idx][0]) {
+      render_string(renderer, log_lines[idx], 10, y, gray);
+      y += 10;
+    }
+  }
+}
+void render_charset_grid(SDL_Renderer* renderer) {
+    SDL_Color gray = {180, 180, 180, 255};
+    int x_start = 8;
+    int y_start = 80;
+
+    for (int i = 0; i < 256; i++) {
+        int col = i % 32;
+        int row = i / 32;
+        int x = x_start + col * 8;
+        int y = y_start + row * 8;
+
+        render_char(renderer, (char)i, x, y, gray);
     }
 }
-
 void render_log_border(SDL_Renderer *renderer, int x, int y, int w, int h) {
-    SDL_Color gray = {192, 192, 192, 255};
-    int right = x + w - 1;
-    int bottom = y + h - 1;
+  SDL_Color gray = {192, 192, 192, 255};
+  int right = x + w - 1;
+  int bottom = y + h - 1;
 
-    render_char(renderer, 0xDA, x * 8, y * 8, gray);         // top-left ┌
-    render_char(renderer, 0xBF, right * 8, y * 8, gray);     // top-right ┐
-    render_char(renderer, 0xC0, x * 8, bottom * 8, gray);    // bottom-left └
-    render_char(renderer, 0xD9, right * 8, bottom * 8, gray); // bottom-right ┘
+  render_char(renderer, 0xDA, x * 8, y * 8, gray);         // top-left ┌
+  render_char(renderer, 0xBF, right * 8, y * 8, gray);     // top-right ┐
+  render_char(renderer, 0xC0, x * 8, bottom * 8, gray);    // bottom-left └
+  render_char(renderer, 0xD9, right * 8, bottom * 8, gray); // bottom-right ┘
 
-    for (int i = 1; i < w - 1; i++) {
-        render_char(renderer, 0xC4, (x + i) * 8, y * 8, gray);         // top ─
-        render_char(renderer, 0xC4, (x + i) * 8, bottom * 8, gray);    // bottom ─
-    }
+  for (int i = 1; i < w - 1; i++) {
+    render_char(renderer, 0xC4, (x + i) * 8, y * 8, gray);         // top ─
+    render_char(renderer, 0xC4, (x + i) * 8, bottom * 8, gray);    // bottom ─
+  }
 
-    for (int i = 1; i < h - 1; i++) {
-        render_char(renderer, 0xB3, x * 8, (y + i) * 8, gray);         // left │
-        render_char(renderer, 0xB3, right * 8, (y + i) * 8, gray);     // right │
-    }
+  for (int i = 1; i < h - 1; i++) {
+    render_char(renderer, 0xB3, x * 8, (y + i) * 8, gray);         // left │
+    render_char(renderer, 0xB3, right * 8, (y + i) * 8, gray);     // right │
+  }
 }

@@ -64,9 +64,17 @@ int main(int argc, char* argv[]) {
         SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
   init_sid();  // ← add this if it’s missing!
+  for (int row = 0; row < 8; row++) {
+    for (int col = 0; col < 32; col++) {
+        int code = row * 32 + col;
+        char text[2] = { (char)code, 0 }; // one character, null-terminated
+        render_text(renderer, text, 10 + col * 8, 40 + row * 10); // adjust Y as needed
+    }
+}
   sid_serial_fd = open("/dev/cu.usbmodem6666101", O_WRONLY | O_NOCTTY);
   if (sid_serial_fd < 0) {
-  }render_log("ERROR: open() failed: %s", strerror(errno));
+    //render_log("ERROR: Failed to open SID serial");
+  }
 
   if (!load_charset("charset.bin", renderer)) {
     render_log("ERROR: Failed to load charset.bin");
@@ -84,7 +92,6 @@ int main(int argc, char* argv[]) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    draw_text(renderer, 10, 10, "SIDdler piano layout active");
     render_log_flush(renderer);
 
     SDL_RenderPresent(renderer);

@@ -13,5 +13,5 @@ void draw_text(SDL_Renderer* renderer, int x, int y, const char* text);
 void render_log(const char *fmt, ...);
 void render_log_flush(SDL_Renderer *renderer);
 void render_log_border(SDL_Renderer *renderer, int x, int y, int w, int h);
-
+void render_charset_grid(SDL_Renderer* renderer);
 #endif

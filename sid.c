@@ -28,20 +28,20 @@ void sid_send_note(uint8_t addr, uint8_t val) {
     }
 
     char msg[64];
-    snprintf(msg, sizeof(msg), "Sending to SID: addr=$%02X val=$%02X", addr, val);
+    snprintf(msg, sizeof(msg), ">[%02X] [%02X]", addr, val);
     render_log("%s", msg);
 
     uint8_t buf[2] = { addr, val };
     ssize_t written = write(sid_serial_fd, buf, 2);
 
     if (written != 2) {
-        render_log("ERROR: Failed to write (only %ld bytes)", written);
+        //render_log("ERROR: Failed to write (only %ld bytes)", written);
     }
 }
 void play_note(int note) {
     if (note != current_note) {
         current_note = note;
-        render_log("Play note: %d\n", note);
+        //render_log("Play note: %d\n", note);
 
         static const uint16_t sid_freqs[] = {
             0x0116, 0x012C, 0x0145, 0x015F, 0x017B, 0x0199, 0x01B9, 0x01DB,
@@ -68,7 +68,7 @@ void play_note(int note) {
 
 void stop_note(int note) {
     if (note == current_note) {
-        render_log("Stop note: %d\n", note);
+       // render_log("Stop note: %d\n", note);
         sid_send_note(0x04, 0x00); // Gate off
         current_note = -1;
     }
