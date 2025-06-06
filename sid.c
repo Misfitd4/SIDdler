@@ -1,3 +1,5 @@
+
+#include "render.h"
 #include "sid.h"
 #include <termios.h>
 #include <unistd.h>
@@ -14,21 +16,32 @@ void init_sid(void) {
     if (sid_serial_fd < 0) {
         perror("Failed to open SID serial port");
     } else {
-        printf("SID serial opened OK.\n");
+        render_log("SID serial opened OK.\n");
         tcflush(sid_serial_fd, TCIOFLUSH);
     }
 }
 
 void sid_send_note(uint8_t addr, uint8_t val) {
-    if (sid_serial_fd < 0) return;
-    uint8_t buf[2] = { addr, val };
-    write(sid_serial_fd, buf, 2);
-}
+    if (sid_serial_fd < 0) {
+        render_log("ERROR: Serial not open");
+        return;
+    }
 
+    char msg[64];
+    snprintf(msg, sizeof(msg), "Sending to SID: addr=$%02X val=$%02X", addr, val);
+    render_log("%s", msg);
+
+    uint8_t buf[2] = { addr, val };
+    ssize_t written = write(sid_serial_fd, buf, 2);
+
+    if (written != 2) {
+        render_log("ERROR: Failed to write (only %ld bytes)", written);
+    }
+}
 void play_note(int note) {
     if (note != current_note) {
         current_note = note;
-        printf("Play note: %d\n", note);
+        render_log("Play note: %d\n", note);
 
         static const uint16_t sid_freqs[] = {
             0x0116, 0x012C, 0x0145, 0x015F, 0x017B, 0x0199, 0x01B9, 0x01DB,
@@ -55,7 +68,7 @@ void play_note(int note) {
 
 void stop_note(int note) {
     if (note == current_note) {
-        printf("Stop note: %d\n", note);
+        render_log("Stop note: %d\n", note);
         sid_send_note(0x04, 0x00); // Gate off
         current_note = -1;
     }

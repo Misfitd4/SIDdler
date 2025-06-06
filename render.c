@@ -1,6 +1,7 @@
 #include "render.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #define CHAR_WIDTH 8
 #define CHAR_HEIGHT 8
@@ -51,13 +52,13 @@ void render_char(SDL_Renderer* renderer, char c, int x, int y, SDL_Color fg) {
     if (c >= 'A' && c <= 'Z') {
         petscii_index = c - '@';  // '@' is first (ASCII 64), so 'A' is index 1, etc.
     } else if (c >= 'a' && c <= 'z') {
-        petscii_index = (c - 'a' + 1) + 128;  // start at lowercase PETSCII (offset 2048)
+        petscii_index = (c - 'a' + 1) + 128;
     } else if (c == ' ') {
         petscii_index = 32;
     } else if (c >= '0' && c <= '9') {
         petscii_index = c;
     } else {
-        petscii_index = '?';  // fallback for now
+        petscii_index = '?';
     }
 
     SDL_Rect src = {
@@ -71,6 +72,7 @@ void render_char(SDL_Renderer* renderer, char c, int x, int y, SDL_Color fg) {
     SDL_SetTextureColorMod(charset_texture, fg.r, fg.g, fg.b);
     SDL_RenderCopy(renderer, charset_texture, &src, &dst);
 }
+
 void render_string(SDL_Renderer* renderer, const char* str, int x, int y, SDL_Color fg) {
     while (*str) {
         render_char(renderer, *str++, x, y, fg);
@@ -86,4 +88,51 @@ void render_text(SDL_Renderer* renderer, const char* text, int x, int y) {
 void draw_text(SDL_Renderer* renderer, int x, int y, const char* text) {
     SDL_Color white = {255, 255, 255, 255};
     render_string(renderer, text, x, y, white);
+}
+
+// Logging system
+#define MAX_LOG_LINES 8
+#define MAX_LOG_LENGTH 64
+static char log_lines[MAX_LOG_LINES][MAX_LOG_LENGTH];
+static int log_index = 0;
+
+void render_log(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(log_lines[log_index], MAX_LOG_LENGTH, fmt, args);
+    va_end(args);
+    log_index = (log_index + 1) % MAX_LOG_LINES;
+}
+
+void render_log_flush(SDL_Renderer *renderer) {
+    SDL_Color gray = {192, 192, 192, 255};
+    int y = 40;
+    for (int i = 0; i < MAX_LOG_LINES; ++i) {
+        int idx = (log_index + i) % MAX_LOG_LINES;
+        if (log_lines[idx][0]) {
+            render_string(renderer, log_lines[idx], 10, y, gray);
+            y += 10;
+        }
+    }
+}
+
+void render_log_border(SDL_Renderer *renderer, int x, int y, int w, int h) {
+    SDL_Color gray = {192, 192, 192, 255};
+    int right = x + w - 1;
+    int bottom = y + h - 1;
+
+    render_char(renderer, 0xDA, x * 8, y * 8, gray);         // top-left ┌
+    render_char(renderer, 0xBF, right * 8, y * 8, gray);     // top-right ┐
+    render_char(renderer, 0xC0, x * 8, bottom * 8, gray);    // bottom-left └
+    render_char(renderer, 0xD9, right * 8, bottom * 8, gray); // bottom-right ┘
+
+    for (int i = 1; i < w - 1; i++) {
+        render_char(renderer, 0xC4, (x + i) * 8, y * 8, gray);         // top ─
+        render_char(renderer, 0xC4, (x + i) * 8, bottom * 8, gray);    // bottom ─
+    }
+
+    for (int i = 1; i < h - 1; i++) {
+        render_char(renderer, 0xB3, x * 8, (y + i) * 8, gray);         // left │
+        render_char(renderer, 0xB3, right * 8, (y + i) * 8, gray);     // right │
+    }
 }
